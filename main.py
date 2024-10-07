@@ -16,6 +16,7 @@ def table_warehouse():
         quantidade INTEGER)
 '''
     )
+    connect.commit()
 
 
 class App(UserControl):
@@ -27,8 +28,10 @@ class App(UserControl):
         #     return e
 
         self.warehouse = Column(auto_scroll=True)
+
+
         self.create_lote = TextField(label="#lote: ")
-        self.value_lote = TextField(label="Quantidade produzida: ")
+        self.value_lote = TextField(label="Quantidade produzida: ", keyboard_type="number")
         self.update_prod = TextField(label="Editar quantidade: ")
         # self.shelf_life = DatePicker(open=True)
         self.list_prod = Dropdown(options=[
@@ -78,13 +81,60 @@ class App(UserControl):
         horizontal_alignment=CrossAxisAlignment.CENTER,
         )
     
+#imprimir a lista do banco de dados em tela.
+    def read_list(self):
+        cursor.execute("SELECT * FROM produtos")
+        connect.commit()
+
+        my_list = cursor.fetchall()
+
+        self.warehouse.controls.clear()
+
+        for prod in my_list:
+            id_prod, lote, produto, validade, quantidade = prod
+            self.warehouse.controls.append(
+                ListTile(
+                    title=Text(f"Lote: {lote}"),
+                    subtitle=Text(f"Produto: {produto} - Quantidade: {quantidade}"),
+                    trailing=Row(controls=[
+                        IconButton(icon=icons.CREATE_OUTLINED, tooltip="Editar", on_click=lambda e, id=id_prod: self.update_click(id)),
+                        IconButton(icon=icons.DELETE_OUTLINED, tooltip="Deletar", on_click=lambda e, id=id_prod: self.delete_click(id)),
+                    ])
+                )
+            )
+
 
     def create_new_lote(self, e):
-        cursor.execute("INSERT TO produtos ()")
-        self.warehouse.controls.append(Text(f"Novo lote ({self.create_lote.value}): {self.value_lote.value} unidades."))
-        self.create_lote.value = ""
-        self.update()
+        lote = self.create_lote.value
+        produto = self.list_prod.value
+        quantidade = self.value_lote.value
 
+        if lote and produto and quantidade:
+            cursor.execute("INSERT INTO produtos (lote, produto, quantidade) VALUES (?, ?, ?)",
+                           (lote, produto, quantidade))
+            connect.commit()
+            
+
+            self.warehouse.controls.append(Text(f"Novo lote ({lote}): {quantidade} unidades de {produto}."))
+            self.create_lote.value = ""
+            self.value_lote.value = ""
+            self.read_list()
+        else:
+            print("preencha todos os campos!")
+
+    def update_click(self, id_prod):
+        new_value = self.update_prod.value
+        if new_value:
+            cursor.execute("UPDATE produtos SET quantidade = ? WHERE id = ?", (new_value, id_prod))
+            connect.commit()
+            self.read_list()
+        else:
+            print("Informe um novo valor para editar!")
+
+    def delete_click(self, id_prod):
+        cursor.execute("DELETE FROM produtos WHERE id = ?", (id_prod,))
+        connect.commit()
+        self.read_list()
 
 def main(page:Page):
 
