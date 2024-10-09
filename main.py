@@ -23,9 +23,6 @@ class App(UserControl):
     def __init__(self):
         super().__init__()
 
-        # def validation(e):
-        #     self.update()
-        #     return e
 
         self.warehouse = Column(auto_scroll=True)
 
@@ -33,7 +30,8 @@ class App(UserControl):
         self.create_lote = TextField(label="#lote: ")
         self.value_lote = TextField(label="Quantidade produzida: ", keyboard_type="number")
         self.update_prod = TextField(label="Editar quantidade: ")
-        # self.shelf_life = DatePicker(open=True)
+        self.shelf_life = DatePicker(open=True, field_label_text="Validade: ")
+        self.selected_valid = None
         self.list_prod = Dropdown(options=[
             dropdown.Option("Ghee tradicional 200g"),
             dropdown.Option("Ghee tradicional 300g"),
@@ -61,9 +59,9 @@ class App(UserControl):
                 controls=[self.create_lote], alignment=MainAxisAlignment.CENTER,
         ))
 
-        # post_shelf_life = Container(Row(
-        #         controls=[Text("Data: "),self.shelf_life], alignment=MainAxisAlignment.CENTER,
-        # ))
+        post_shelf_life = Container(Row(
+                controls=[self.shelf_life], alignment=MainAxisAlignment.CENTER,
+        ))
     
         post_prod = Container(Row(
                 controls=[self.list_prod], alignment=MainAxisAlignment.CENTER,
@@ -75,7 +73,7 @@ class App(UserControl):
 
         return Column([
             Text("Atualização do Estoque", size=20, weight="bold"),
-            post_lote, post_prod, post_quant, button_create_lote,
+            post_lote, post_prod, post_quant, post_shelf_life, button_create_lote
         ], 
         alignment=MainAxisAlignment.SPACE_AROUND,
         horizontal_alignment=CrossAxisAlignment.CENTER,
@@ -95,39 +93,50 @@ class App(UserControl):
             self.warehouse.controls.append(
                 ListTile(
                     title=Text(f"Lote: {lote}"),
-                    subtitle=Text(f"Produto: {produto} - Quantidade: {quantidade}"),
+                    subtitle=Text(f"Produto: {produto} Validade: {validade} - Quantidade: {quantidade}"),
                     trailing=Row(controls=[
                         IconButton(icon=icons.CREATE_OUTLINED, tooltip="Editar", on_click=lambda e, id=id_prod: self.update_click(id)),
                         IconButton(icon=icons.DELETE_OUTLINED, tooltip="Deletar", on_click=lambda e, id=id_prod: self.delete_click(id)),
                     ])
                 )
             )
+            self.update()
 
 
     def create_new_lote(self, e):
         lote = self.create_lote.value
         produto = self.list_prod.value
         quantidade = self.value_lote.value
+        validade = self.shelf_life.value
 
-        if lote and produto and quantidade:
-            cursor.execute("INSERT INTO produtos (lote, produto, quantidade) VALUES (?, ?, ?)",
-                           (lote, produto, quantidade))
-            connect.commit()
+        if lote and produto and quantidade and validade:
+            try:
+                quantidade = int(quantidade)
+                cursor.execute("INSERT INTO produtos (lote, produto, validade, quantidade) VALUES (?, ?, ?, ?)",
+                            (lote, produto, validade, quantidade))
+                connect.commit()
             
 
-            self.warehouse.controls.append(Text(f"Novo lote ({lote}): {quantidade} unidades de {produto}."))
-            self.create_lote.value = ""
-            self.value_lote.value = ""
-            self.read_list()
+                self.warehouse.controls.append(Text(f"Novo lote ({lote}): {quantidade} unidades de {produto} (validade: {validade})."))
+                self.create_lote.value = ""
+                self.value_lote.value = ""
+                self.shelf_life.value = None
+                self.read_list()
+            except ValueError:
+                print("Quantidade deve ser um número!")
         else:
             print("preencha todos os campos!")
 
     def update_click(self, id_prod):
         new_value = self.update_prod.value
         if new_value:
-            cursor.execute("UPDATE produtos SET quantidade = ? WHERE id = ?", (new_value, id_prod))
-            connect.commit()
-            self.read_list()
+            try:
+                new_value = int(new_value)
+                cursor.execute("UPDATE produtos SET quantidade = ? WHERE id = ?", (new_value, id_prod))
+                connect.commit()
+                self.read_list()
+            except ValueError:
+                print("Informe um valor numérico!")
         else:
             print("Informe um novo valor para editar!")
 
