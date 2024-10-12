@@ -1,24 +1,36 @@
 from flet import *
 import sqlite3 as sl 
 
+try:
+    connect = sl.connect("dados.db", check_same_thread=False)
+    cursor = connect.cursor()
+    print("Conexão com banco de dados bem-sucedida.")
 
-connect = sl.connect("dados.db", check_same_thread=False)
-cursor = connect.cursor()
-
+except sl.Error as e:
+    print(f"Erro ao conectar ao banco de dados:  {e}")
 
 def table_warehouse():
-    cursor.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS produtos (id INTEGER PRIMARY KEY AUTOINCREMENT,
-        lote TEXT,
-        produto TEXT,
-        validade TEXT,
-        quantidade INTEGER)
-'''
-    )
-    connect.commit()
+    try:    
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS produtos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                lote TEXT,
+                produto TEXT,
+                validade TEXT,
+                quantidade INTEGER
+                )
+                '''
+        )
+        connect.commit()
+        print("Tabela 'produtos' criada com sucesso.")
 
+    except sl.Error as e:
+        print(f"Erro ao criar a tabela: {e}")
 
+table_warehouse()
+
+#Argumentos de inserção.
 class App(UserControl):
     def __init__(self):
         super().__init__()
@@ -51,7 +63,7 @@ class App(UserControl):
             dropdown.Option("GheeRofa 250g"),          
             ])
 
-
+#Organização do Layout do app.
     def build(self):
         button_create_lote = ElevatedButton('Inserir Estoque', on_click=self.create_new_lote)
 
@@ -102,9 +114,10 @@ class App(UserControl):
             )
             self.update()
 
-
+#Adicionar valores inputados pelo usuario no banco de dados.
     def create_new_lote(self, e):
         lote = self.create_lote.value
+
         produto = self.list_prod.value
         quantidade = self.value_lote.value
         validade = self.shelf_life.value
@@ -127,6 +140,7 @@ class App(UserControl):
         else:
             print("preencha todos os campos!")
 
+#Atualizar informações de items inseridos no banco de dados.
     def update_click(self, id_prod):
         new_value = self.update_prod.value
         if new_value:
@@ -140,16 +154,16 @@ class App(UserControl):
         else:
             print("Informe um novo valor para editar!")
 
+#Deletar alguma informação do banco de dados.
     def delete_click(self, id_prod):
         cursor.execute("DELETE FROM produtos WHERE id = ?", (id_prod,))
         connect.commit()
         self.read_list()
 
-def main(page:Page):
 
+def main(page:Page):
     my_app = App()
-    
-    
+
     page.controls.append(my_app)
     page.update()
 
